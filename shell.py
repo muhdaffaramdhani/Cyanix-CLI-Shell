@@ -1,5 +1,6 @@
 import os
 import sys
+import getpass
 from utils import parse_line
 
 # --- ANSI True Color Escape Codes ---
@@ -82,9 +83,11 @@ def main():
 
     print("  Ketik 'help' untuk daftar perintah, 'exit' untuk keluar.\n")
 
+    username = getpass.getuser()
+
     while True:
         try:
-            raw_input = input("user@cynix:~$ ").strip()
+            raw_input = input(f"{username}@cynix:~$ ").strip()
             
             if not raw_input:
                 continue
