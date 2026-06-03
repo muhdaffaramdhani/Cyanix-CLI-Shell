@@ -1,11 +1,6 @@
 # Cynix-CLI-Shell (CyanSh)
 
-Cynix-CLI-Shell adalah implementasi **custom shell berbasis CLI** yang terinspirasi dari konsep arsitektur **Cyanix OS** — konsep sistem operasi berbasis microkernel yang dikembangkan oleh Kelompok 7. Shell ini adalah implementasi dari prinsip-prinsip desain yang telah dirancang dalam laporan konsep OS, seperti:
-
-- **Security by Design** → setiap proses berjalan terisolasi, tidak boleh crash sembarangan
-- **Modular Robustness** → komponen shell dipisah dengan jelas (built-in vs external vs advanced)
-- **Least Privilege** → proses anak tidak mewarisi lebih dari yang dibutuhkan
-- **IPC via Message Passing** → representasi dari mekanisme `fork()` + `pipe()` sebagai analogi IPC di Cyanix OS
+Cynix-CLI-Shell adalah implementasi **custom shell berbasis CLI** yang terinspirasi dari konsep arsitektur **Cyanix OS** — konsep sistem operasi berbasis microkernel yang dikembangkan oleh Kelompok 7.
 
 Shell ini dinamakan **Cynix-CLI-Shell** sebagai referensi langsung ke *CyanSh (Cyan Shell)* yang disebutkan dalam dokumen laporan konsep Cyanix OS.
 
@@ -86,30 +81,3 @@ Cyanix-CLI-Shell/
    ```
 
 ---
-
-### 4. Rencana Pengembangan Selanjutnya (Tahap 3 - Tahap 6)
-
-#### Tahap 3 — Implementasi Built-in Commands
-* **Target:** Mengeksekusi perintah dasar secara langsung di dalam proses shell utama tanpa melakukan pembuatan proses baru (*tanpa fork*) untuk mengubah *state* dari shell itu sendiri.
-* **Fitur Wajib:**
-  * `cd` : Mengubah direktori aktif shell menggunakan *system call* `os.chdir()` (atau `chdir()` pada level OS).
-  * `pwd`: Menampilkan path direktori aktif saat ini menggunakan fungsi `os.getcwd()` (atau `getcwd()` pada level OS).
-
-#### Tahap 4 — Forking & Eksekusi Perintah Eksternal
-* **Target:** Mampu menjalankan perintah bawaan sistem operasi (seperti `ls`, `mkdir`, `clear`, dll) dengan menduplikasi proses shell.
-* **Mekanisme Proses:**
-  * **Child Process:** Menggunakan *system call* `fork()` untuk membuat proses anak, kemudian memanggil keluarga fungsi `exec()` (seperti `execvp()`) untuk mengganti gambar memori proses anak dengan program eksternal yang dituju.
-  * **Parent Process:** Menggunakan fungsi `wait()` atau `waitpid()` agar CLI utama menahan diri (menunggu) hingga proses anak selesai dieksekusi sebelum memunculkan prompt kustom baru ke pengguna.
-
-#### Tahap 5 — Fitur Lanjutan (Piping & I/O Redirection) `[Bonus Target]`
-* **Target:** Memanipulasi *file descriptor* pada level sistem operasi untuk mengarahkan aliran data (Input/Output).
-* **Fitur Manipulasi:**
-  * **I/O Redirection (`>` atau `<`):** Mengalihkan output standar atau input standar dari/ke file teks eksternal dengan memanfaatkan fungsi manajemen deskriptor seperti `dup2()`. *Contoh:* `ls > hasil.txt`.
-  * **Piping (`|`):** Menghubungkan output standar dari proses pertama langsung menjadi input standar untuk proses kedua menggunakan *system call* `pipe()`. *Contoh:* `ls | grep .txt`.
-
-#### Tahap 6 — Pengujian Beban & Penanganan Eror (Robustness)
-* **Target:** Memastikan stabilitas CLI agar memiliki ketahanan tinggi (*anti-crash*) dan tidak mengalami *force close* saat menerima anomali input.
-* **Skenario Penanganan:**
-  * Menangani input kosong (pengguna hanya menekan tombol `Enter` tanpa karakter apa pun).
-  * Menampilkan pesan kesalahan standar `cynix: command not found` secara aman jika perintah luar tidak dikenali oleh sistem.
-  * Melakukan pembersihan otomatis terhadap spasi berlebih (*whitespace*) serta membatasi argumen sesuai batas aman yang ditentukan pada struktur parser.
