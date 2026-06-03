@@ -14,6 +14,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+GUIDE.md
 
 # OS-specific files
 .DS_Store
