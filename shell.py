@@ -35,22 +35,6 @@ SYSTEM_INFO = [
                      "                Fathya Khairani R (1313624056)")
 ]
 
-def setup_terminal():
-    if hasattr(sys.stdout, 'reconfigure'):
-        try:
-            sys.stdout.reconfigure(encoding='utf-8')
-        except Exception:
-            pass
-
-    if os.name == 'nt':
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        hStdOut = kernel32.GetStdHandle(-11)
-        if hStdOut != -1 and hStdOut is not None:
-            mode = ctypes.c_ulong()
-            if kernel32.GetConsoleMode(hStdOut, ctypes.byref(mode)):
-                kernel32.SetConsoleMode(hStdOut, mode.value | 0x0004)
-
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -76,7 +60,6 @@ def print_splash_banner():
     print(COLOR_DIVIDER + DIVIDER + COLOR_RESET)
 
 def main():
-    setup_terminal()
     clear_screen()
 
     print_splash_banner()
