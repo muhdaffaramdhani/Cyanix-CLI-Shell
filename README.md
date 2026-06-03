@@ -63,12 +63,6 @@ Cyanix-CLI-Shell/
 │   ├── __init__.py       # Module Exporter
 │   └── parser.py         # Parsing & Tokenization (Tahap 2)
 │
-├── commands/
-│   ├── __init__.py
-│   ├── builtin.py        # Persiapan Built-in (Tahap 3)
-│   ├── external.py       # Persiapan Perintah Eksternal (Tahap 4)
-│   └── cyanix_spec.py    # Ekstensi simulasi Cyanix OS
-│
 ├── .gitignore            # File konfigurasi Git
 └── README.md             # Dokumentasi proyek
 ```
