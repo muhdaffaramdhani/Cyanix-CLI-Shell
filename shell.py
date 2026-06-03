@@ -28,7 +28,7 @@ ASCII_LOGO = """
 
 SYSTEM_INFO = [
     ("Shell Name", "CyanSh (Cyanix CLI Shell)"),
-    ("Version", "v1.0.0 (Stable Prototype)"),
+    ("Version", "v1.0.0"),
     ("Contributors", "Fujiono Nur Ikhsan (1313624008)\n"
                      "                Nadine Alysha Maheswari (1313624009)\n"
                      "                Muhammad Daffa Ramdhani (1313624025)\n"
@@ -45,7 +45,7 @@ def print_splash_banner():
     print()
 
     # 2. Nama & Tagline
-    print(COLOR_OS_INFO + "∞  CyanSh — Cyanix CLI Shell v1.0.0 (Stable Prototype)" + COLOR_RESET)
+    print(COLOR_OS_INFO + "∞ CyanSh — Cyanix CLI Shell v1.0.0" + COLOR_RESET)
     print(COLOR_TAGLINE + '"Security at the Core, Performance at the Edge"' + COLOR_RESET)
     print()
 
