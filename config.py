@@ -14,7 +14,7 @@ COLOR_RESET = "\033[0m"
 
 # --- Colorful Prompt Themes ---
 COLOR_PROMPT_USER = "\033[1;32m"      # Bold Green
-COLOR_PROMPT_OS = "\033[1;35m"        # Bold Magenta/Pink
+COLOR_PROMPT_OS = "\033[1;36m"        # Bold Cyan
 COLOR_PROMPT_DIR = "\033[1;33m"       # Bold Yellow/Orange
 COLOR_PROMPT_SYMBOL = "\033[1;36m"    # Bold Light Blue/Cyan
 
