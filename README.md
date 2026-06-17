@@ -16,9 +16,7 @@ Tugas ini disusun untuk memenuhi ujian akhir semester (UAS) mata kuliah **Sistem
 * **Dosen Pengampu:** Ari Hendarno, M.Kom
 * **Instansi:** Universitas Negeri Jakarta
 
-## Fitur Utama (Fungsionalitas Shell)
-
-Shell ini dikembangkan secara modular dan aman, mendukung penanganan masukan interaktif raw mode, dan mencakup fitur-fitur berikut:
+## Fitur Utama
 
 ### 1. Perintah Bawaan Universal (Built-in Commands)
 
