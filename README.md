@@ -29,7 +29,7 @@ Shell ini dikembangkan secara modular dan aman, mendukung penanganan masukan int
 *   `**touch [nama_file]**`: Membuat file kosong baru secara eksplisit.
 *   `**mkdir [nama_folder]**`: Membuat direktori/folder baru secara langsung menggunakan `os.makedirs`. Nama folder yang menggunakan titik (misal `folder.txt`) akan tetap dibuat sebagai folder.
 *   `**cat [nama_file.txt]**`: Membaca dan menampilkan isi teks berkas UTF-8 dengan aman.
-*   `**cp [sumber] [tujuan]**` **&** `**cp -r [sumber] [tujuan]**`: Menyalin file biasa atau direktori secara rekursif (wajib menyertakan `-r` untuk folder).
+*   `**cp [sumber] [tujuan]**`**&** `**cp -r [sumber] [tujuan]**`: Menyalin file biasa atau direktori secara rekursif (wajib menyertakan `-r` untuk folder).
 *   `**mv [sumber] [tujuan]**`: Memindahkan atau mengubah nama berkas/folder secara langsung tanpa memerlukan opsi khusus.
 *   `**rm [file]**` **&** `**rm -r [folder]**`: Menghapus berkas atau folder secara aman. Penghapusan direktori wajib menyertakan flag `-r` agar tidak memicu pembatalan dan pesan error.
 *   `**cls**` **/** `**clear**`: Membersihkan antarmuka layar terminal.
