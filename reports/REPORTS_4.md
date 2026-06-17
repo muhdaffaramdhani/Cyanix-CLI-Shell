@@ -18,7 +18,7 @@ Pada Tahap 4, pengembangan difokuskan untuk mengintegrasikan fungsionalitas mana
    Sistem pelengkapan otomatis (autocomplete) berbasis tombol Tab kini mendukung pemilihan melingkar (cycling):
    - Jika pengguna mengetik sebagian nama folder (misal `cd sys`) lalu menekan Tab, shell mencari seluruh folder yang cocok (misal `System` dan `System32`).
    - Penekanan Tab pertama kali akan langsung melakukan penulisan otomatis pilihan pertama (`System/`). Jika tombol Tab ditekan lagi secara berurutan tanpa mengetik karakter baru, nama sebelumnya dihapus otomatis dan diganti pilihan kedua (`System32/`). Pilihan akan terus berputar secara melingkar (loop/cycle).
-   - Status rotasi dikelola oleh state tracker (`current_matches`, `match_index`, `original_prefix`) di dalam `read_line_interactive()` dan di-reset seketika jika pengguna mengetik karakter baru, menekan Backspace/Delete, atau tombol Panah.
+   - Status rotasi dikelola oleh state tracker (`current_matches`, `match_index`, `original_prefix`) di dalam `read_line_interactive()` and di-reset seketika jika pengguna mengetik karakter baru, menekan Backspace/Delete, atau tombol Panah.
    - Nama folder terpilih otomatis dibungkus tanda kutip ganda jika mengandung karakter spasi (misal `cd "System Data/"`).
 
 4. **Proteksi Argumen Kosong (Kekurangan Operand)**:
