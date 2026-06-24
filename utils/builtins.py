@@ -176,8 +176,16 @@ def run_builtin_mkdir(args: list[str]) -> bool:
 
 def run_builtin_cat(args: list[str]) -> bool:
     if len(args) < 2:
-        print("cynix: cat: kekurangan operand. Penggunaan: cat [nama_file.txt]")
-        return True
+        if not sys.stdin.isatty():
+            try:
+                for line in sys.stdin:
+                    print(line, end='')
+            except Exception as e:
+                print(f"cat: error: gagal membaca stdin: {e}")
+            return True
+        else:
+            print("cynix: cat: kekurangan operand. Penggunaan: cat [nama_file.txt]")
+            return True
     for target in args[1:]:
         try:
             if os.path.isdir(target):
