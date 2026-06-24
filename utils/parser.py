@@ -1,14 +1,39 @@
 import shlex
 
+def preprocess_line(line: str) -> str:
+    result = []
+    in_quote = None
+    i = 0
+    while i < len(line):
+        char = line[i]
+        if char in ('"', "'"):
+            if in_quote == char:
+                in_quote = None
+            elif in_quote is None:
+                in_quote = char
+            result.append(char)
+        elif char in ('|', '>', '<') and in_quote is None:
+            if i > 0 and line[i-1] == '\\':
+                result.append(char)
+            else:
+                result.append(f" {char} ")
+        else:
+            result.append(char)
+        i += 1
+    return "".join(result)
+
 def parse_line(line: str) -> list[str]:
     # 1. Validasi Panjang Input (Max 1024 Karakter)
     if len(line) > 1024:
         raise ValueError("cynix: error: input terlalu panjang (maksimal 1024 karakter)")
 
+    # Preprocess line to separate operators
+    preprocessed = preprocess_line(line)
+
     # 2. Tokenisasi
     try:
         # shlex.split handles quotes and backslashes correctly (removing them for args)
-        tokens = shlex.split(line)
+        tokens = shlex.split(preprocessed)
     except ValueError as e:
         raise ValueError(f"cynix: error: {e}")
 

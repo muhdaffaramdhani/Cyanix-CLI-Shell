@@ -3,13 +3,13 @@ import sys
 import ctypes
 import subprocess
 
-# --- ANSI True Color Escape Codes for Splash Banner ---
-COLOR_LOGO = "\033[38;2;19;175;215m"                # Cyan (#13AFD7)
-COLOR_OS_INFO = "\033[38;2;19;175;215m\033[1m"      # Cyan + Bold
-COLOR_TAGLINE = "\033[38;2;29;90;104m"              # Dark Cyan (#1D5A68)
-COLOR_LABEL = "\033[38;2;19;175;215m"               # Cyan
-COLOR_VALUE = "\033[38;2;42;138;158m"               # Mid Cyan (#2A8A9E)
-COLOR_DIVIDER = "\033[38;2;26;58;69m"               # Deep Cyan (#1A3A45)
+# --- ANSI 256-Color Escape Codes (Compatible with macOS Terminal.app & Windows) ---
+COLOR_LOGO = "\033[38;5;39m"                        # Cyan
+COLOR_OS_INFO = "\033[38;5;39m\033[1m"              # Cyan + Bold
+COLOR_TAGLINE = "\033[38;5;31m"                      # Dark Cyan
+COLOR_LABEL = "\033[38;5;39m"                       # Cyan
+COLOR_VALUE = "\033[38;5;73m"                       # Mid Cyan
+COLOR_DIVIDER = "\033[38;5;24m"                      # Deep Cyan
 COLOR_RESET = "\033[0m"
 
 # --- Colorful Prompt Themes ---
@@ -87,7 +87,7 @@ def disable_raw_mode():
             try:
                 import termios
                 fd = sys.stdin.fileno()
-                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+                termios.tcsetattr(fd, termios.TCSANOW, old_settings)
             except Exception:
                 pass
 
@@ -97,6 +97,18 @@ def setup_terminal():
         try:
             kernel32 = ctypes.windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+        except Exception:
+            pass
+    else:
+        # UNIX: Force restore cooked mode at startup in case a previous run crashed
+        try:
+            import termios
+            import sys
+            fd = sys.stdin.fileno()
+            attrs = termios.tcgetattr(fd)
+            attrs[3] |= (termios.ECHO | termios.ICANON | termios.IEXTEN | termios.ISIG)
+            attrs[1] |= termios.OPOST
+            termios.tcsetattr(fd, termios.TCSANOW, attrs)
         except Exception:
             pass
 

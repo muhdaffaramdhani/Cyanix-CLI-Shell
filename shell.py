@@ -5,7 +5,9 @@ import socket
 import ctypes
 import time
 import unicodedata
+import atexit
 from utils import parse_line, execute_command
+
 from config import (
     setup_terminal,
     clear_screen,
@@ -19,6 +21,8 @@ from config import (
     COLOR_PROMPT_SYMBOL,
     COLOR_RESET
 )
+
+atexit.register(disable_raw_mode)
 
 # History file settings
 HISTORY_FILE = os.path.expanduser("~/.cyanix_history")
@@ -172,7 +176,7 @@ def is_char_available() -> bool:
                 return True
         else:
             import select
-            r, w, x = select.select([sys.stdin], [], [], 0.001)
+            r, w, x = select.select([0], [], [], 0.001)
             if r:
                 return True
         if (time.time() - start_time) * 1000 > 10:  # 10ms timeout
@@ -344,21 +348,33 @@ def get_char() -> bytes:
             return b'\x03'
         return ch.encode('utf-8')
     else:
-        # UNIX or Git Bash using sys.stdin.read(1)
-        ch = sys.stdin.read(1)
-        if ch == '\x1b':
+        # UNIX or Git Bash using os.read(0, 1) to avoid Python-side buffering of stdin
+        try:
+            ch = os.read(0, 1)
+        except Exception:
+            return b""
+        if ch == b'\x1b':
             if is_char_available():
-                ch2 = sys.stdin.read(1)
-                if ch2 == '[':
+                try:
+                    ch2 = os.read(0, 1)
+                except Exception:
+                    ch2 = b""
+                if ch2 == b'[':
                     if is_char_available():
-                        ch3 = sys.stdin.read(1)
-                        if ch3 in ('3', '1'):
+                        try:
+                            ch3 = os.read(0, 1)
+                        except Exception:
+                            ch3 = b""
+                        if ch3 in (b'3', b'1'):
                             if is_char_available():
-                                ch4 = sys.stdin.read(1)
-                                return f"\x1b[{ch3}{ch4}".encode('utf-8')
-                        return f"\x1b[{ch3}".encode('utf-8')
-                return f"\x1b{ch2}".encode('utf-8')
-        return ch.encode('utf-8')
+                                try:
+                                    ch4 = os.read(0, 1)
+                                except Exception:
+                                    ch4 = b""
+                                return ch + ch2 + ch3 + ch4
+                        return ch + ch2 + ch3
+                return ch + ch2
+        return ch
 
 def is_interactive() -> bool:
     return sys.stdin.isatty() and sys.stdout.isatty()
@@ -381,228 +397,233 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
     match_index = -1
     original_prefix = ""
     
-    sys.stdout.write(prompt_prefix)
-    sys.stdout.flush()
-    
-    while True:
-        buffer_str = "".join(buffer)
-        suggestion = get_suggestion(buffer_str) if pos == len(buffer) else ""
-        
-        # Get terminal size
-        try:
-            cols = os.get_terminal_size().columns
-        except Exception:
-            try:
-                cols = shutil.get_terminal_size().columns
-            except Exception:
-                cols = 80
-                
-        prompt_len = 2  # Visual length of "$ " is 2
-        visible_width = max(10, cols - prompt_len - 4)
-        
-        # Calculate visible slice using our helper (prevents Unicode/multibyte visual glitches)
-        start_idx, visible_chars, cursor_offset_width = calculate_visible_slice(buffer, pos, visible_width)
-        buffer_visible_str = "".join(visible_chars)
-        
-        # Get visible slice of suggestion
-        suggestion_visible = ""
-        if suggestion:
-            rem = visible_width - get_str_width(visible_chars)
-            if rem > 0:
-                suggestion_visible_chars = []
-                sugg_w = 0
-                for c in suggestion:
-                    char_w = get_char_width(c)
-                    if sugg_w + char_w > rem:
-                        break
-                    suggestion_visible_chars.append(c)
-                    sugg_w += char_w
-                suggestion_visible = "".join(suggestion_visible_chars)
-                
-        suggestion_rendered = ""
-        if suggestion_visible:
-            suggestion_rendered = f"\033[90m{suggestion_visible}\033[0m"
-            
-        sys.stdout.write("\r" + prompt_prefix + buffer_visible_str + suggestion_rendered + "\033[K")
-        
-        # Calculate move left distance (visual width cells)
-        visual_printed_width = get_str_width(visible_chars) + get_str_width(suggestion_visible)
-        move_left = visual_printed_width - cursor_offset_width
-        if move_left > 0:
-            sys.stdout.write(f"\033[{move_left}D")
+    enable_raw_mode()
+    try:
+        sys.stdout.write(prompt_prefix)
         sys.stdout.flush()
         
-        try:
-            ch = get_char()
-        except KeyboardInterrupt:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            raise KeyboardInterrupt
+        while True:
+            buffer_str = "".join(buffer)
+            suggestion = get_suggestion(buffer_str) if pos == len(buffer) else ""
             
-        if not ch:
-            continue
-            
-        if ch == b'\x03':  # Ctrl+C
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            raise KeyboardInterrupt
-            
-        elif ch == b'\x04':  # Ctrl+D
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-            raise EOFError
-            
-        elif ch == b'\x16':  # Ctrl+V (Paste)
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            clip_text = get_clipboard_text()
-            if clip_text:
-                clean_text = ""
-                for c in clip_text:
-                    if ord(c) >= 32:
-                        clean_text += c
-                    elif c in ('\r', '\n', '\t'):
-                        clean_text += ' '
-                for c in clean_text:
-                    if len(buffer) < 1024 and check_arg_limit(buffer, c, pos):
-                        buffer.insert(pos, c)
-                        pos += 1
-                    else:
-                        break
-            
-        elif ch in (b'\r', b'\n'):  # Enter
-            sys.stdout.write("\r" + prompt_prefix + buffer_str + "\033[K\n")
-            sys.stdout.flush()
-            return buffer_str
-            
-        elif ch in (b'\x08', b'\x7f'):  # Backspace
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if pos > 0:
-                buffer.pop(pos - 1)
-                pos -= 1
-                
-        elif ch in KEY_DELETE:
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if pos < len(buffer):
-                buffer.pop(pos)
-                
-        elif ch in (b'\t',):  # Tab (Tab-cycling Autocomplete)
-            if current_matches:
-                match_index = (match_index + 1) % len(current_matches)
-            else:
-                prefix_part, matches = get_all_matches(buffer_str)
-                if matches:
-                    current_matches = matches
-                    original_prefix = prefix_part
-                    match_index = 0
-            
-            if current_matches:
-                completed_str = original_prefix + current_matches[match_index]
-                import shlex
-                try:
-                    tokens = shlex.split(completed_str)
-                    arg_ok = len(tokens) <= 64
-                except ValueError:
-                    arg_ok = len(completed_str.split()) <= 64
-                if len(completed_str) <= 1024 and arg_ok:
-                    buffer = list(completed_str)
-                    pos = len(buffer)
-                
-        elif ch in KEY_LEFT:
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if pos > 0:
-                pos -= 1
-                
-        elif ch in KEY_RIGHT:
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if suggestion:
-                in_quote = None
-                last_space_idx = -1
-                quote_start_idx = -1
-                for i, c in enumerate(buffer_str):
-                    if c == ' ' and in_quote is None:
-                        last_space_idx = i
-                    elif c in ('"', "'"):
-                        if in_quote == c:
-                            in_quote = None
-                        elif in_quote is None:
-                            in_quote = c
-                            quote_start_idx = i
-                            
-                if in_quote is not None:
-                    prefix = buffer_str[:quote_start_idx]
-                    last_word = buffer_str[quote_start_idx:]
-                else:
-                    prefix = buffer_str[:last_space_idx+1]
-                    last_word = buffer_str[last_space_idx+1:]
-                
-                full_word = last_word + suggestion
-                clean_word = full_word.strip('"\'')
-                if " " in clean_word:
-                    completed_word = f'"{clean_word}"'
-                else:
-                    completed_word = clean_word
-                    
-                completed_str = prefix + completed_word
-                import shlex
-                try:
-                    tokens = shlex.split(completed_str)
-                    arg_ok = len(tokens) <= 64
-                except ValueError:
-                    arg_ok = len(completed_str.split()) <= 64
-                if len(completed_str) <= 1024 and arg_ok:
-                    buffer = list(completed_str)
-                    pos = len(buffer)
-            elif pos < len(buffer):
-                pos += 1
-                
-        elif ch in KEY_UP:
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if history:
-                if history_index == len(history):
-                    saved_buffer = buffer_str
-                if history_index > 0:
-                    history_index -= 1
-                    buffer = list(history[history_index])
-                    pos = len(buffer)
-                    
-        elif ch in KEY_DOWN:
-            current_matches = []
-            match_index = -1
-            original_prefix = ""
-            if history_index < len(history):
-                history_index += 1
-                if history_index == len(history):
-                    buffer = list(saved_buffer)
-                else:
-                    buffer = list(history[history_index])
-                pos = len(buffer)
-                
-        elif len(ch) >= 1:
+            # Get terminal size
             try:
-                decoded = ch.decode('utf-8')
-                if len(decoded) == 1:
-                    c = decoded
-                    if ord(c) >= 32 and ord(c) != 127:
-                        current_matches = []
-                        match_index = -1
-                        original_prefix = ""
+                cols = os.get_terminal_size().columns
+            except Exception:
+                try:
+                    cols = shutil.get_terminal_size().columns
+                except Exception:
+                    cols = 80
+                    
+            prompt_len = 2  # Visual length of "$ " is 2
+            visible_width = max(10, cols - prompt_len - 4)
+            
+            # Calculate visible slice using our helper (prevents Unicode/multibyte visual glitches)
+            start_idx, visible_chars, cursor_offset_width = calculate_visible_slice(buffer, pos, visible_width)
+            buffer_visible_str = "".join(visible_chars)
+            
+            # Get visible slice of suggestion
+            suggestion_visible = ""
+            if suggestion:
+                rem = visible_width - get_str_width(visible_chars)
+                if rem > 0:
+                    suggestion_visible_chars = []
+                    sugg_w = 0
+                    for c in suggestion:
+                        char_w = get_char_width(c)
+                        if sugg_w + char_w > rem:
+                            break
+                        suggestion_visible_chars.append(c)
+                        sugg_w += char_w
+                    suggestion_visible = "".join(suggestion_visible_chars)
+                    
+            suggestion_rendered = ""
+            if suggestion_visible:
+                suggestion_rendered = f"\033[90m{suggestion_visible}\033[0m"
+                
+            sys.stdout.write("\r" + prompt_prefix + buffer_visible_str + suggestion_rendered + "\033[K")
+            
+            # Calculate move left distance (visual width cells)
+            visual_printed_width = get_str_width(visible_chars) + get_str_width(suggestion_visible)
+            move_left = visual_printed_width - cursor_offset_width
+            if move_left > 0:
+                sys.stdout.write(f"\033[{move_left}D")
+            sys.stdout.flush()
+            
+            try:
+                ch = get_char()
+            except KeyboardInterrupt:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                raise KeyboardInterrupt
+                
+            if not ch:
+                continue
+                
+            if ch == b'\x03':  # Ctrl+C
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                raise KeyboardInterrupt
+                
+            elif ch == b'\x04':  # Ctrl+D
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+                raise EOFError
+                
+            elif ch == b'\x16':  # Ctrl+V (Paste)
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                clip_text = get_clipboard_text()
+                if clip_text:
+                    clean_text = ""
+                    for c in clip_text:
+                        if ord(c) >= 32:
+                            clean_text += c
+                        elif c in ('\r', '\n', '\t'):
+                            clean_text += ' '
+                    for c in clean_text:
                         if len(buffer) < 1024 and check_arg_limit(buffer, c, pos):
                             buffer.insert(pos, c)
                             pos += 1
-            except UnicodeDecodeError:
-                pass
+                        else:
+                            break
+                
+            elif ch in (b'\r', b'\n'):  # Enter
+                disable_raw_mode()
+                sys.stdout.write("\r" + prompt_prefix + buffer_str + "\033[K\n")
+                sys.stdout.flush()
+                return buffer_str
+                
+            elif ch in (b'\x08', b'\x7f'):  # Backspace
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if pos > 0:
+                    buffer.pop(pos - 1)
+                    pos -= 1
+                    
+            elif ch in KEY_DELETE:
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if pos < len(buffer):
+                    buffer.pop(pos)
+                    
+            elif ch in (b'\t',):  # Tab (Tab-cycling Autocomplete)
+                if current_matches:
+                    match_index = (match_index + 1) % len(current_matches)
+                else:
+                    prefix_part, matches = get_all_matches(buffer_str)
+                    if matches:
+                        current_matches = matches
+                        original_prefix = prefix_part
+                        match_index = 0
+                
+                if current_matches:
+                    completed_str = original_prefix + current_matches[match_index]
+                    import shlex
+                    try:
+                        tokens = shlex.split(completed_str)
+                        arg_ok = len(tokens) <= 64
+                    except ValueError:
+                        arg_ok = len(completed_str.split()) <= 64
+                    if len(completed_str) <= 1024 and arg_ok:
+                        buffer = list(completed_str)
+                        pos = len(buffer)
+                    
+            elif ch in KEY_LEFT:
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if pos > 0:
+                    pos -= 1
+                    
+            elif ch in KEY_RIGHT:
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if suggestion:
+                    in_quote = None
+                    last_space_idx = -1
+                    quote_start_idx = -1
+                    for i, c in enumerate(buffer_str):
+                        if c == ' ' and in_quote is None:
+                            last_space_idx = i
+                        elif c in ('"', "'"):
+                            if in_quote == c:
+                                in_quote = None
+                            elif in_quote is None:
+                                in_quote = c
+                                quote_start_idx = i
+                                
+                    if in_quote is not None:
+                        prefix = buffer_str[:quote_start_idx]
+                        last_word = buffer_str[quote_start_idx:]
+                    else:
+                        prefix = buffer_str[:last_space_idx+1]
+                        last_word = buffer_str[last_space_idx+1:]
+                    
+                    full_word = last_word + suggestion
+                    clean_word = full_word.strip('"\'')
+                    if " " in clean_word:
+                        completed_word = f'"{clean_word}"'
+                    else:
+                        completed_word = clean_word
+                        
+                    completed_str = prefix + completed_word
+                    import shlex
+                    try:
+                        tokens = shlex.split(completed_str)
+                        arg_ok = len(tokens) <= 64
+                    except ValueError:
+                        arg_ok = len(completed_str.split()) <= 64
+                    if len(completed_str) <= 1024 and arg_ok:
+                        buffer = list(completed_str)
+                        pos = len(buffer)
+                elif pos < len(buffer):
+                    pos += 1
+                    
+            elif ch in KEY_UP:
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if history:
+                    if history_index == len(history):
+                        saved_buffer = buffer_str
+                    if history_index > 0:
+                        history_index -= 1
+                        buffer = list(history[history_index])
+                        pos = len(buffer)
+                        
+            elif ch in KEY_DOWN:
+                current_matches = []
+                match_index = -1
+                original_prefix = ""
+                if history_index < len(history):
+                    history_index += 1
+                    if history_index == len(history):
+                        buffer = list(saved_buffer)
+                    else:
+                        buffer = list(history[history_index])
+                    pos = len(buffer)
+                    
+            elif len(ch) >= 1:
+                try:
+                    decoded = ch.decode('utf-8')
+                    if len(decoded) == 1:
+                        c = decoded
+                        if ord(c) >= 32 and ord(c) != 127:
+                            current_matches = []
+                            match_index = -1
+                            original_prefix = ""
+                            if len(buffer) < 1024 and check_arg_limit(buffer, c, pos):
+                                buffer.insert(pos, c)
+                                pos += 1
+                except UnicodeDecodeError:
+                    pass
+    finally:
+        disable_raw_mode()
 
 def main():
     setup_terminal()
@@ -625,7 +646,6 @@ def main():
     
     first_prompt = True
     
-    enable_raw_mode()
     try:
         while state['running']:
             try:
