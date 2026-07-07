@@ -6,7 +6,8 @@ import ctypes
 import time
 import unicodedata
 import atexit
-from utils import parse_line, execute_command
+from utils.parser import parse_line
+from utils.builtins import execute_command
 
 from config import (
     setup_terminal,
