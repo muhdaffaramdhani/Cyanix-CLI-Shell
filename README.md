@@ -67,7 +67,8 @@ Cyanix-CLI-Shell/
 │   ├── REPORTS_2.md      # Laporan Tahap 2: Tokenisasi & Validasi Input
 │   ├── REPORTS_3.md      # Laporan Tahap 3: Built-in cd/pwd/dir
 │   ├── REPORTS_4.md      # Laporan Tahap 4: Forking, cp/mv/cat/touch/mkdir/rm
-│   └── REPORTS_5.md      # Laporan Tahap 5: Piping, Redirection, dan Built-in grep
+│   ├── REPORTS_5.md      # Laporan Tahap 5: Piping, Redirection, dan Built-in grep
+│   └── REPORTS_6.md      # Laporan Tahap 6: Pengujian Beban & Penanganan Eror
 │
 ├── utils/
 │   ├── __init__.py       # Module Exporter

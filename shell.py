@@ -24,10 +24,8 @@ from config import (
 
 atexit.register(disable_raw_mode)
 
-# History file settings
 HISTORY_FILE = os.path.expanduser("~/.cyanix_history")
 
-# Cross-platform raw input support
 try:
     import msvcrt
     WINDOWS = True
@@ -39,7 +37,6 @@ if not WINDOWS:
     import termios
     import select
 
-# Key code definitions (supporting standard e0 and 00 prefixes on Windows, and ANSI escape codes on UNIX/Git Bash)
 KEY_UP = (b'\xe0H', b'\x00H', b'\x1b[A')
 KEY_DOWN = (b'\xe0P', b'\x00P', b'\x1b[B')
 KEY_RIGHT = (b'\xe0M', b'\x00M', b'\x1b[C')
@@ -104,12 +101,11 @@ def calculate_visible_slice(buffer: list[str], pos: int, visible_width: int) -> 
 
 def get_clipboard_text() -> str:
     if sys.platform == 'win32':
-        # 1. Try native Win32 Clipboard API with Console Window handle
         try:
             hwnd = ctypes.windll.kernel32.GetConsoleWindow()
             if ctypes.windll.user32.OpenClipboard(hwnd):
                 try:
-                    h_clip_mem = ctypes.windll.user32.GetClipboardData(13) # CF_UNICODETEXT
+                    h_clip_mem = ctypes.windll.user32.GetClipboardData(13)
                     if h_clip_mem:
                         ctypes.windll.kernel32.GlobalLock.restype = ctypes.c_void_p
                         ctypes.windll.kernel32.GlobalLock.argtypes = [ctypes.c_void_p]
@@ -123,7 +119,6 @@ def get_clipboard_text() -> str:
         except Exception:
             pass
             
-        # 2. Try PowerShell fallback if ctypes API fails or returns empty
         try:
             import subprocess
             out = subprocess.check_output(
@@ -144,7 +139,6 @@ def get_clipboard_text() -> str:
         except Exception:
             pass
     else:
-        # Linux / Other POSIX
         try:
             import subprocess
             for cmd in [['xclip', '-selection', 'clipboard', '-o'], ['xsel', '-b', '-o'], ['wl-paste']]:
@@ -158,7 +152,6 @@ def get_clipboard_text() -> str:
 
 def bytes_available_windows() -> int:
     try:
-        # Get standard input handle (STD_INPUT_HANDLE = -10)
         handle = ctypes.windll.kernel32.GetStdHandle(-10)
         avail = ctypes.c_ulong(0)
         res = ctypes.windll.kernel32.PeekNamedPipe(handle, None, 0, None, ctypes.byref(avail), None)
@@ -179,7 +172,7 @@ def is_char_available() -> bool:
             r, w, x = select.select([0], [], [], 0.001)
             if r:
                 return True
-        if (time.time() - start_time) * 1000 > 10:  # 10ms timeout
+        if (time.time() - start_time) * 1000 > 10:
             break
         time.sleep(0.001)
     return False
@@ -315,7 +308,6 @@ def get_all_matches(buffer_str: str) -> tuple[str, list[str]]:
         if os.path.isdir(search_dir):
             items = os.listdir(search_dir)
             for name in items:
-                # Skip hidden files unless explicitly requested
                 if name.startswith('.') and not filter_prefix.startswith('.'):
                     continue
                 full_path = os.path.join(search_dir, name)
@@ -325,7 +317,6 @@ def get_all_matches(buffer_str: str) -> tuple[str, list[str]]:
                     completed = dir_prefix + name
                     if os.path.isdir(full_path):
                         completed += "/"
-                    # Quote if it contains spaces
                     if " " in completed:
                         completed = f'"{completed}"'
                     matches.append(completed)
@@ -348,7 +339,6 @@ def get_char() -> bytes:
             return b'\x03'
         return ch.encode('utf-8')
     else:
-        # UNIX or Git Bash using os.read(0, 1) to avoid Python-side buffering of stdin
         try:
             ch = os.read(0, 1)
         except Exception:
@@ -406,7 +396,6 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
             buffer_str = "".join(buffer)
             suggestion = get_suggestion(buffer_str) if pos == len(buffer) else ""
             
-            # Get terminal size
             try:
                 cols = os.get_terminal_size().columns
             except Exception:
@@ -415,14 +404,12 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
                 except Exception:
                     cols = 80
                     
-            prompt_len = 2  # Visual length of "$ " is 2
+            prompt_len = 2
             visible_width = max(10, cols - prompt_len - 4)
             
-            # Calculate visible slice using our helper (prevents Unicode/multibyte visual glitches)
             start_idx, visible_chars, cursor_offset_width = calculate_visible_slice(buffer, pos, visible_width)
             buffer_visible_str = "".join(visible_chars)
             
-            # Get visible slice of suggestion
             suggestion_visible = ""
             if suggestion:
                 rem = visible_width - get_str_width(visible_chars)
@@ -443,7 +430,6 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
                 
             sys.stdout.write("\r" + prompt_prefix + buffer_visible_str + suggestion_rendered + "\033[K")
             
-            # Calculate move left distance (visual width cells)
             visual_printed_width = get_str_width(visible_chars) + get_str_width(suggestion_visible)
             move_left = visual_printed_width - cursor_offset_width
             if move_left > 0:
@@ -460,17 +446,17 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
             if not ch:
                 continue
                 
-            if ch == b'\x03':  # Ctrl+C
+            if ch == b'\x03':
                 sys.stdout.write("\n")
                 sys.stdout.flush()
                 raise KeyboardInterrupt
                 
-            elif ch == b'\x04':  # Ctrl+D
+            elif ch == b'\x04':
                 sys.stdout.write("\n")
                 sys.stdout.flush()
                 raise EOFError
                 
-            elif ch == b'\x16':  # Ctrl+V (Paste)
+            elif ch == b'\x16':
                 current_matches = []
                 match_index = -1
                 original_prefix = ""
@@ -489,13 +475,13 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
                         else:
                             break
                 
-            elif ch in (b'\r', b'\n'):  # Enter
+            elif ch in (b'\r', b'\n'):
                 disable_raw_mode()
                 sys.stdout.write("\r" + prompt_prefix + buffer_str + "\033[K\n")
                 sys.stdout.flush()
                 return buffer_str
                 
-            elif ch in (b'\x08', b'\x7f'):  # Backspace
+            elif ch in (b'\x08', b'\x7f'):
                 current_matches = []
                 match_index = -1
                 original_prefix = ""
@@ -510,7 +496,7 @@ def read_line_interactive(prompt_prefix: str, history: list[str]) -> str:
                 if pos < len(buffer):
                     buffer.pop(pos)
                     
-            elif ch in (b'\t',):  # Tab (Tab-cycling Autocomplete)
+            elif ch in (b'\t',):
                 if current_matches:
                     match_index = (match_index + 1) % len(current_matches)
                 else:
@@ -631,7 +617,6 @@ def main():
     print_splash_banner()
     print("  Ketik 'help' untuk daftar perintah, 'exit' untuk keluar.\n")
     
-    # Setup global state structure
     state = {
         'debug_mode': "--debug" in sys.argv,
         'running': True
@@ -649,23 +634,19 @@ def main():
     try:
         while state['running']:
             try:
-                # Print blank line between prompts (except the very first one)
                 if not first_prompt:
                     print()
                 first_prompt = False
                 
-                # Format path: replace backslash with forward slash and use ~ for home directory
                 raw_path = os.getcwd()
                 formatted_path = raw_path.replace('\\', '/')
                 home = os.path.expanduser("~").replace('\\', '/')
                 if formatted_path.startswith(home):
                     formatted_path = "~" + formatted_path[len(home):]
                     
-                # Line 1 of prompt (Colorful layout)
                 debug_prefix = "\033[93m[DEBUG]\033[0m " if state['debug_mode'] else ""
                 print(f"{debug_prefix}{COLOR_PROMPT_USER}{username}@{device}{COLOR_RESET} {COLOR_PROMPT_OS}CyanixOS{COLOR_RESET} {COLOR_PROMPT_DIR}{formatted_path}{COLOR_RESET}")
                 
-                # Line 2 of prompt (interactive read)
                 prompt_prefix = f"{COLOR_PROMPT_SYMBOL}${COLOR_RESET} "
                 
                 raw_input = read_line_interactive(prompt_prefix, history).strip()
@@ -682,7 +663,6 @@ def main():
                 if not args:
                     continue
                     
-                # Print debug information if debug mode is active
                 if state['debug_mode']:
                     print("\033[93m[DEBUG] Tokenized arguments:\033[0m")
                     for idx, arg in enumerate(args):
@@ -693,7 +673,6 @@ def main():
                 execute_command(args, state)
                 
             except KeyboardInterrupt:
-                # Just reset prompt and continue without printing an extra blank line
                 continue
             except EOFError:
                 print()

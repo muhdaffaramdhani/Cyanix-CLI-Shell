@@ -367,14 +367,12 @@ def run_builtin_grep(args: list[str]) -> bool:
     flags = []
     pos_args = []
     
-    # Parse arguments into flags and positional arguments
     for arg in args[1:]:
         if arg.startswith('-') and len(arg) > 1:
             flags.append(arg)
         else:
             pos_args.append(arg)
             
-    # Deconstruct flags
     case_insensitive = False
     recursive = False
     line_number = False
@@ -403,7 +401,6 @@ def run_builtin_grep(args: list[str]) -> bool:
             return pat.lower() in line_content.lower()
         return pat in line_content
 
-    # If no files are specified, and recursive is not enabled, read from stdin
     if not files and not recursive:
         try:
             line_idx = 1
@@ -419,7 +416,6 @@ def run_builtin_grep(args: list[str]) -> bool:
             print(f"grep: error membaca stdin: {e}")
         return True
 
-    # Otherwise, resolve files/directories to search
     search_paths = files if files else ["."]
     files_to_search = []
     
@@ -513,7 +509,6 @@ def execute_single_command(args: list[str], state: dict) -> bool:
         clear_screen()
         return True
         
-    # Drive change shortcut (e.g. c:, d:, e:)
     elif len(cmd) == 2 and cmd[1] == ':' and cmd[0].isalpha():
         drive = cmd.upper() + "/"
         try:
@@ -523,7 +518,6 @@ def execute_single_command(args: list[str], state: dict) -> bool:
         return True
         
     else:
-        # Suspend raw mode while external command runs so it has sane terminal I/O
         disable_raw_mode()
         try:
             if hasattr(os, 'fork'):
@@ -581,10 +575,8 @@ def execute_command(args: list[str], state: dict) -> bool:
     if len(commands) == 0:
         return True
 
-    # Check if POSIX fork-exec piping is available
     if hasattr(os, 'fork'):
         if len(commands) == 1:
-            # Single command
             cmd_tokens = commands[0]
             try:
                 clean_cmd, cmd_in_file, cmd_out_file = parse_redirection(cmd_tokens)
@@ -597,7 +589,6 @@ def execute_command(args: list[str], state: dict) -> bool:
                 
             cmd_name = clean_cmd[0]
             if is_builtin(cmd_name):
-                # Run built-in in the parent process
                 saved_stdin_fd = None
                 saved_stdout_fd = None
                 fd_in = None
@@ -647,7 +638,6 @@ def execute_command(args: list[str], state: dict) -> bool:
                         os.close(saved_stdout_fd)
                 return True
             else:
-                # Fork and execute single external command
                 disable_raw_mode()
                 try:
                     pid = os.fork()
@@ -704,7 +694,6 @@ def execute_command(args: list[str], state: dict) -> bool:
                     enable_raw_mode()
                 return True
         else:
-            # Multi-command pipeline on POSIX
             disable_raw_mode()
             pids = []
             prev_read = None
@@ -807,7 +796,6 @@ def execute_command(args: list[str], state: dict) -> bool:
             return True
             
     else:
-        # Windows Fallback Implementation (no os.fork)
         input_data = None
         
         for idx, cmd_tokens in enumerate(commands):

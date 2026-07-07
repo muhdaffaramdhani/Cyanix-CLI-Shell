@@ -3,22 +3,19 @@ import sys
 import ctypes
 import subprocess
 
-# --- ANSI 256-Color Escape Codes (Compatible with macOS Terminal.app & Windows) ---
-COLOR_LOGO = "\033[38;5;39m"                        # Cyan
-COLOR_OS_INFO = "\033[38;5;39m\033[1m"              # Cyan + Bold
-COLOR_TAGLINE = "\033[38;5;31m"                      # Dark Cyan
-COLOR_LABEL = "\033[38;5;39m"                       # Cyan
-COLOR_VALUE = "\033[38;5;73m"                       # Mid Cyan
-COLOR_DIVIDER = "\033[38;5;24m"                      # Deep Cyan
+COLOR_LOGO = "\033[38;5;39m"
+COLOR_OS_INFO = "\033[38;5;39m\033[1m"
+COLOR_TAGLINE = "\033[38;5;31m"
+COLOR_LABEL = "\033[38;5;39m"
+COLOR_VALUE = "\033[38;5;73m"
+COLOR_DIVIDER = "\033[38;5;24m"
 COLOR_RESET = "\033[0m"
 
-# --- Colorful Prompt Themes ---
-COLOR_PROMPT_USER = "\033[1;32m"      # Bold Green
-COLOR_PROMPT_OS = "\033[1;36m"        # Bold Cyan
-COLOR_PROMPT_DIR = "\033[1;33m"       # Bold Yellow/Orange
-COLOR_PROMPT_SYMBOL = "\033[1;36m"    # Bold Light Blue/Cyan
+COLOR_PROMPT_USER = "\033[1;32m"
+COLOR_PROMPT_OS = "\033[1;36m"
+COLOR_PROMPT_DIR = "\033[1;33m"
+COLOR_PROMPT_SYMBOL = "\033[1;36m"
 
-# --- Constants & Specs ---
 DIVIDER = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 ASCII_LOGO = """
@@ -41,7 +38,6 @@ SYSTEM_INFO = [
                      "                Fathya Khairani R (1313624056)")
 ]
 
-# Detect Git Bash on Windows
 IS_GIT_BASH = (os.name == 'nt') and ("MSYSTEM" in os.environ)
 old_settings = None
 
@@ -50,19 +46,16 @@ def enable_raw_mode():
     if os.name == 'nt':
         if IS_GIT_BASH:
             try:
-                # Set raw mode and turn off echo in Git Bash (mintty)
                 subprocess.run(["stty", "raw", "-echo"], capture_output=True)
             except Exception:
                 pass
         else:
-            # Enable VT mode in native Windows console
             try:
                 kernel32 = ctypes.windll.kernel32
                 kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
             except Exception:
                 pass
     else:
-        # UNIX raw mode
         try:
             import tty
             import termios
@@ -77,12 +70,10 @@ def disable_raw_mode():
     if os.name == 'nt':
         if IS_GIT_BASH:
             try:
-                # Restore terminal settings in Git Bash
                 subprocess.run(["stty", "sane"], capture_output=True)
             except Exception:
                 pass
     else:
-        # UNIX restore
         if old_settings is not None:
             try:
                 import termios
@@ -93,14 +84,12 @@ def disable_raw_mode():
 
 def setup_terminal():
     if os.name == 'nt':
-        # Enable virtual terminal processing on Windows to render ANSI colors properly
         try:
             kernel32 = ctypes.windll.kernel32
             kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
         except Exception:
             pass
     else:
-        # UNIX: Force restore cooked mode at startup in case a previous run crashed
         try:
             import termios
             import sys
